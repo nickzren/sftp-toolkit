@@ -24,8 +24,25 @@ def download_dir(sftp, remote_dir, local_dir):
         if file_attr.longname.startswith('d'):  # If it's a directory
             download_dir(sftp, remote_file, local_file)
         else:  # If it's a file
-            sftp.get(remote_file, local_file)
-            print(f"Downloaded {remote_file} to {local_file}")
+            if not os.path.exists(local_file):  # Check if the file exists locally
+                sftp.get(remote_file, local_file)
+                print(f"Downloaded {remote_file} to {local_file}")
+            else:
+                print(f"Skipped {remote_file} as it already exists locally")
+
+def count_remote_files(sftp, remote_dir):
+    """
+    Count the total number of files in a remote SFTP directory.
+    Args:
+    - sftp: An active SFTP session
+    - remote_dir: The remote directory path
+    Returns:
+    - total_files: Total number of files in the remote directory
+    """
+    sftp.chdir(remote_dir)
+    file_list = sftp.listdir()
+    total_files = len(file_list)
+    return total_files
 
 def setup_sftp_connection(url, username, password):
     """
@@ -53,7 +70,14 @@ def main(args):
     sftp = setup_sftp_connection(args.url, args.username, args.password)
 
     try:
+        total_remote_files = count_remote_files(sftp, remote_dir)
         download_dir(sftp, remote_dir, local_dir)
+        local_files = os.listdir(local_dir)
+        total_local_files = len(local_files)
+
+        print(f"Total remote files: {total_remote_files}")
+        print(f"Total local files: {total_local_files}")
+
     finally:
         sftp.close()
 
