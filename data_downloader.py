@@ -26,7 +26,7 @@ def download_dir(sftp, remote_dir, local_dir):
             download_dir(sftp, remote_file, local_file)
         else:  # If it's a file
             if not os.path.exists(local_file):  # Check if the file exists locally
-                with tqdm(total=file_attr.st_size, unit='B', unit_scale=True, unit_divisor=1024) as progress_bar:
+                with tqdm(total=file_attr.st_size, unit='B', unit_scale=True, unit_divisor=1024, dynamic_ncols=True) as progress_bar:
                     sftp.get(remote_file, local_file, callback=lambda x, y: progress_bar.update(y))
                 print(f"Downloaded {remote_file} to {local_file}")
             else:
