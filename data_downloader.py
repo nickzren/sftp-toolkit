@@ -2,10 +2,11 @@ import argparse
 import os
 import paramiko
 import sys
+from tqdm import tqdm
 
 def download_dir(sftp, remote_dir, local_dir):
     """
-    Recursively download files from a remote SFTP directory to a local directory.
+    Recursively download files from a remote SFTP directory to a local directory with progress bar.
     Args:
     - sftp: An active SFTP session
     - remote_dir: The remote directory path
@@ -25,7 +26,8 @@ def download_dir(sftp, remote_dir, local_dir):
             download_dir(sftp, remote_file, local_file)
         else:  # If it's a file
             if not os.path.exists(local_file):  # Check if the file exists locally
-                sftp.get(remote_file, local_file)
+                with tqdm(total=file_attr.st_size, unit='B', unit_scale=True, unit_divisor=1024) as progress_bar:
+                    sftp.get(remote_file, local_file, callback=lambda x, y: progress_bar.update(y))
                 print(f"Downloaded {remote_file} to {local_file}")
             else:
                 print(f"Skipped {remote_file} as it already exists locally")
