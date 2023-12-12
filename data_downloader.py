@@ -5,13 +5,6 @@ import sys
 from tqdm import tqdm
 
 def download_dir(sftp, remote_dir, local_dir):
-    """
-    Recursively download files from a remote SFTP directory to a local directory with progress bar.
-    Args:
-    - sftp: An active SFTP session
-    - remote_dir: The remote directory path
-    - local_dir: The local directory path where files will be downloaded
-    """
     if not os.path.exists(local_dir):
         os.makedirs(local_dir)
 
@@ -22,10 +15,10 @@ def download_dir(sftp, remote_dir, local_dir):
         remote_file = os.path.join(remote_dir, file_attr.filename)
         local_file = os.path.join(local_dir, file_attr.filename)
 
-        if file_attr.longname.startswith('d'):  # If it's a directory
+        if file_attr.longname.startswith('d'):
             download_dir(sftp, remote_file, local_file)
-        else:  # If it's a file
-            if not os.path.exists(local_file):  # Check if the file exists locally
+        else:
+            if not os.path.exists(local_file):
                 with tqdm(total=file_attr.st_size, unit='B', unit_scale=True, unit_divisor=1024, dynamic_ncols=True) as progress_bar:
                     sftp.get(remote_file, local_file, callback=lambda x, y: progress_bar.update(y))
                 print(f"Downloaded {remote_file} to {local_file}")
@@ -33,27 +26,26 @@ def download_dir(sftp, remote_dir, local_dir):
                 print(f"Skipped {remote_file} as it already exists locally")
 
 def count_remote_files(sftp, remote_dir):
-    """
-    Count the total number of files in a remote SFTP directory.
-    Args:
-    - sftp: An active SFTP session
-    - remote_dir: The remote directory path
-    Returns:
-    - total_files: Total number of files in the remote directory
-    """
     sftp.chdir(remote_dir)
-    file_list = sftp.listdir()
-    total_files = len(file_list)
+    total_files = 0
+    for entry in sftp.listdir_attr():
+        if entry.longname.startswith('d'):
+            total_files += count_remote_files(sftp, os.path.join(remote_dir, entry.filename))
+        else:
+            total_files += 1
+    return total_files
+
+def count_local_files(local_dir):
+    total_files = 0
+    for entry in os.listdir(local_dir):
+        path = os.path.join(local_dir, entry)
+        if os.path.isdir(path):
+            total_files += count_local_files(path)
+        else:
+            total_files += 1
     return total_files
 
 def setup_sftp_connection(url, username, password):
-    """
-    Set up and return an SFTP connection.
-    Args:
-    - url: URL of the SFTP server
-    - username: SFTP username
-    - password: SFTP password
-    """
     try:
         transport = paramiko.Transport((url, 22))
         transport.connect(username=username, password=password)
@@ -74,8 +66,7 @@ def main(args):
     try:
         total_remote_files = count_remote_files(sftp, remote_dir)
         download_dir(sftp, remote_dir, local_dir)
-        local_files = os.listdir(local_dir)
-        total_local_files = len(local_files)
+        total_local_files = count_local_files(local_dir)
 
         print(f"Total remote files: {total_remote_files}")
         print(f"Total local files: {total_local_files}")
