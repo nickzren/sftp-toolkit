@@ -20,7 +20,10 @@ def download_dir(sftp, remote_dir, local_dir):
         else:
             if not os.path.exists(local_file):
                 with tqdm(total=file_attr.st_size, unit='B', unit_scale=True, unit_divisor=1024, dynamic_ncols=True) as progress_bar:
-                    sftp.get(remote_file, local_file, callback=lambda x, y: progress_bar.update(y))
+                    def progress_callback(transferred, to_be_transferred):
+                        progress_bar.update(transferred - progress_bar.n)
+                    
+                    sftp.get(remote_file, local_file, callback=progress_callback)
                 print(f"Downloaded {remote_file} to {local_file}")
             else:
                 print(f"Skipped {remote_file} as it already exists locally")
